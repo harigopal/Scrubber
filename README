@@ -7,11 +7,29 @@ the program, the basic list of numbers is called the 'Number List' and
 the list against which exclusion operation is perform is called the 'DND
 List'.
 
-SA can handle large lists of numbers. I've tested it for up to 2 x 1.5M
-numbers succesfully. Beyond that, it runs into the memory wall for
-an App allowed by JVM. Haven't found a way around that yet, but
-the current limit is acceptable for its use case.
+SA can handle large lists of numbers. I've tested it for up to 2 x 4.5Mn
+numbers succesfully. The custom run scripts (Windows / UNIX) found in
+'test/' can be used for handling large files (> 4Mn total). The memory
+value assigned can, of course, be increased for even larger files.
 
 As should be obvious from the 'nbproject' folder this App has been
 developed using the NetBeans IDE. Start NetBeans, add this project and
 click run to build n' execute! :-)
+
+* *************** *
+* Why a Java App? *
+* *************** *
+
+This is much faster than a (MySQL) DB exclusion (outer join) operation.
+Scrubbing two 4.5 Mn lists against each other took 37 seconds on my 2005
+Macbook. Of those 37 seconds, it took 30 to just to load the data into
+memory. A computer with faster I/O would do a lot better.
+
+* ***************** *
+* How does it work? *
+* ***************** *
+
+1) Load from files into array (long).
+2) Sort (binary) both arrays.
+3) Search (binary) for each number in 'Number list' in the 'DND list'.
+4) Output result list.

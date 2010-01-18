@@ -285,7 +285,7 @@ public class scrubberGUI extends javax.swing.JFrame implements PropertyChangeLis
             } catch (IOException ex) {
                 Logger.getLogger(scrubberGUI.class.getName()).log(Level.SEVERE, null, ex);
             }
-            statusLabel.setText("Input file contains " + totalInputNumbers + " numbers. Waiting for DND file selection...");
+            statusLabel.setText("Input file contains " + (totalInputNumbers - 10) + " numbers. Waiting for DND file selection...");
         } else {
             statusLabel.setText("Input file selection cancelled... Waiting for input...");
         }
@@ -304,7 +304,7 @@ public class scrubberGUI extends javax.swing.JFrame implements PropertyChangeLis
             } catch (IOException ex) {
                 Logger.getLogger(scrubberGUI.class.getName()).log(Level.SEVERE, null, ex);
             }
-            statusLabel.setText("DND file contains " + totalDndNumbers + " numbers. Press 'Scrub!' to begin.");
+            statusLabel.setText("DND file contains " + (totalDndNumbers - 10) + " numbers. Press 'Scrub!' to begin.");
         } else {
             statusLabel.setText("DND file selection cancelled... Waiting for input...");
         }
