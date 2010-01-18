@@ -1,0 +1,17 @@
+* ************** *
+* ScrubberApp v2 *
+* ************** *
+
+A simple app that will scrub one list of numbers against another. Within
+the program, the basic list of numbers is called the 'Number List' and
+the list against which exclusion operation is perform is called the 'DND
+List'.
+
+SA can handle large lists of numbers. I've tested it for up to 2 x 1.5M
+numbers succesfully. Beyond that, it runs into the memory wall for
+an App allowed by JVM. Haven't found a way around that yet, but
+the current limit is acceptable for its use case.
+
+As should be obvious from the 'nbproject' folder this App has been
+developed using the NetBeans IDE. Start NetBeans, add this project and
+click run to build n' execute! :-)

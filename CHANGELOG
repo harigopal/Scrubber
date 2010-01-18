@@ -1,0 +1,15 @@
+------
+| v2 |
+------
+
+  * Fixed a memory overflow error while loading files.
+  * Fixed app crashing when non-numeric values are encountered in input.
+      The app now displays a message that alerts the user to the
+      presence of such values and asks that they be removed manually
+      before attempting a 'scrub'.
+
+------
+| v1 |
+------
+
+  * Initial feature-complete version.
