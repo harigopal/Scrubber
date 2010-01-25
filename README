@@ -1,16 +1,21 @@
 * ************** *
-* ScrubberApp v2 *
+* ScrubberApp v3 *
 * ************** *
 
-A simple app that will scrub one list of numbers against another. Within
-the program, the basic list of numbers is called the 'Number List' and
-the list against which exclusion operation is perform is called the 'DND
-List'.
+This is a simple app that will scrub a base list of numbers against
+another list of numbers and (optionally) against a range of numbers
+defined by their starting digits.
+
+Within the program, the basic list of numbers is called the 'Number
+List' and the list against which exclusion operation is perform is
+called the 'Scrub List'. The range of numbers is referred to as the
+'Scrub-Range List'.
 
 SA can handle large lists of numbers. I've tested it for up to 2 x 4.5Mn
 numbers succesfully. The custom run scripts (Windows / UNIX) found in
 'test/' can be used for handling large files (> 4Mn total). The memory
-value assigned can, of course, be increased for even larger files.
+value assigned can, of course, be increased for even larger files. Edit
+those launch scripts should you run into a memory wall.
 
 As should be obvious from the 'nbproject' folder this App has been
 developed using the NetBeans IDE. Start NetBeans, add this project and
@@ -31,5 +36,6 @@ memory. A computer with faster I/O would do a lot better.
 
 1) Load from files into array (long).
 2) Sort (binary) both arrays.
-3) Search (binary) for each number in 'Number list' in the 'DND list'.
-4) Output result list.
+3) Check if number falls within exclusion range (Optional step).
+4) Search (binary) for each number in 'Number list' in the 'DND list'.
+5) Output result list.

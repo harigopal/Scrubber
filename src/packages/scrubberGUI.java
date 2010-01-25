@@ -39,33 +39,57 @@ public class scrubberGUI extends javax.swing.JFrame implements PropertyChangeLis
         public Void doInBackground() {
             setProgress(0);
 
-            inputNumbers = new long[totalInputNumbers];
-            dndNumbers = new long[totalDndNumbers];
-            outputNumbers = new long[totalInputNumbers];
+            inputNumbers = new long[totalInputListNumbers];
+            scrubNumbers = new long[totalScrubListNumbers];
+            scrubRangeNumbers = new long[totalScrubRangeNumbers][2];
+            outputNumbers = new long[totalInputListNumbers];
+            int combinedInputCount = totalInputListNumbers + totalScrubListNumbers + totalScrubRangeNumbers;
+            long tempForScrubRange = 0;
+            boolean currentNumberWithinRange = false;
 
             // First get all the input into an array.
-            statusLabel.setText("Loading data from files...");
             scrubProgressBar.setIndeterminate(false);
             Scanner inputFileScanner = null;
-            Scanner dndFileScanner = null;
+            Scanner scrubFileScanner = null;
+            Scanner scrubRangeFileScanner = null;
             try {
                 inputFileScanner = new Scanner(new BufferedReader(new FileReader(inputFile)));
-                dndFileScanner = new Scanner(new BufferedReader(new FileReader(dndFile)));
+                scrubFileScanner = new Scanner(new BufferedReader(new FileReader(scrubFile)));
+                if(scrubRangeEnableCheckBox.isSelected()) {
+                    scrubRangeFileScanner = new Scanner(new BufferedReader(new FileReader(scrubRangeFile)));
+                }
 
-                int oldProgressBarValue = 0;
-                int newProgressBarValue = 0;
+                statusLabel.setText("Loading data from Input List...");
                 while (inputFileScanner.hasNext()) {
                     inputNumbers[inputNumberCount] = Long.parseLong(inputFileScanner.next());
+                    long aa = inputNumbers[inputNumberCount];
                     inputNumberCount++;
-                    setProgress(Math.min(((inputNumberCount + dndNumberCount) * 100) / (totalInputNumbers + totalDndNumbers), 100));
+                    setProgress(Math.min(((inputNumberCount) * 100) / (combinedInputCount), 100));
                 }
                 hasCompletedInputImport = true;
-                while (dndFileScanner.hasNext()) {
-                    dndNumbers[dndNumberCount] = Long.parseLong(dndFileScanner.next());
-                    dndNumberCount++;
-                    setProgress(Math.min(((inputNumberCount + dndNumberCount) * 100) / (totalInputNumbers + totalDndNumbers), 100));
+
+                statusLabel.setText("Loading data from Scrub List...");
+                while (scrubFileScanner.hasNext()) {
+                    scrubNumbers[scrubListNumberCount] = Long.parseLong(scrubFileScanner.next());
+                    scrubListNumberCount++;
+                    setProgress(Math.min(((inputNumberCount + scrubListNumberCount) * 100) / (combinedInputCount), 100));
                 }
-                hasCompletedDNDImport = true;
+                hasCompletedScrubListImport = true;
+
+                if(scrubRangeEnableCheckBox.isSelected()) {
+                    statusLabel.setText("Loading data from Scrub-Range File...");
+                    while (scrubRangeFileScanner.hasNext()) {
+                        tempForScrubRange = Long.parseLong(scrubRangeFileScanner.next());
+                        int lengthOfRange = 10 - (String.valueOf(tempForScrubRange).trim().length());
+                        double rangeMultiplier = Math.pow(10, lengthOfRange);
+                        double rangeAdder = Math.pow(10, (lengthOfRange)) - 1;
+                        scrubRangeNumbers[scrubRangeNumberCount][0] = tempForScrubRange * (long)rangeMultiplier;
+                        scrubRangeNumbers[scrubRangeNumberCount][1] = scrubRangeNumbers[scrubRangeNumberCount][0] + (long)rangeAdder;
+                        scrubRangeNumberCount++;
+                        setProgress(Math.min(((inputNumberCount + scrubListNumberCount + scrubRangeNumberCount) * 100) / (combinedInputCount), 100));
+                    }
+                    hasCompletedScrubRangeImport = true;
+                }
             } catch (FileNotFoundException ex) {
                 Logger.getLogger(scrubberGUI.class.getName()).log(Level.SEVERE, null, ex);
                 statusLabel.setText("Error encountered when reading from files!");
@@ -73,8 +97,8 @@ public class scrubberGUI extends javax.swing.JFrame implements PropertyChangeLis
                 if (inputFileScanner != null) {
                     inputFileScanner.close();
                 }
-                if (dndFileScanner != null) {
-                    dndFileScanner.close();
+                if (scrubFileScanner != null) {
+                    scrubFileScanner.close();
                 }
             }
             setProgress(0);
@@ -83,21 +107,36 @@ public class scrubberGUI extends javax.swing.JFrame implements PropertyChangeLis
             statusLabel.setText("Sorting data for binary search operation...");
             scrubProgressBar.setIndeterminate(true);
             Arrays.sort(inputNumbers);
-            Arrays.sort(dndNumbers);
+            Arrays.sort(scrubNumbers);
 
-            // Then do the main processing.
+            // Then do the main exclusion processing.
             scrubProgressBar.setIndeterminate(false);
             setProgress(0);
-            statusLabel.setText("Processing...");
-            inputNumberCount = 0;
-            while (inputNumberCount < totalInputNumbers) {
+            statusLabel.setText("Final processing...");
+            for(inputNumberCount = 0; inputNumberCount < totalInputListNumbers; inputNumberCount++) {
                 // Do, step by step.
-                if (0 > Arrays.binarySearch(dndNumbers, inputNumbers[inputNumberCount])) {
+                if(scrubRangeEnableCheckBox.isSelected()) {
+                    currentNumberWithinRange = false;
+                    for(scrubRangeNumberCount = 0; scrubRangeNumberCount < totalScrubRangeNumbers; scrubRangeNumberCount++) {
+                        long a = inputNumbers[inputNumberCount];
+                        long b = scrubRangeNumbers[scrubRangeNumberCount][0];
+                        long c = scrubRangeNumbers[scrubRangeNumberCount][1];
+                        if((inputNumbers[inputNumberCount] >= scrubRangeNumbers[scrubRangeNumberCount][0]) && (inputNumbers[inputNumberCount] <= scrubRangeNumbers[scrubRangeNumberCount][1])) {
+                            currentNumberWithinRange = true;
+                            break;
+                        }
+                    }
+                    if(currentNumberWithinRange) {
+                        setProgress(Math.min(((inputNumberCount + 1 * 100) / totalInputListNumbers), 100));
+                        continue;
+                    }
+                }
+
+                if (0 > Arrays.binarySearch(scrubNumbers, inputNumbers[inputNumberCount])) {
                     outputNumbers[outputNumberCount] = inputNumbers[inputNumberCount];
                     outputNumberCount++;
                 }
-                inputNumberCount++;
-                setProgress(Math.min(((inputNumberCount * 100) / totalInputNumbers), 100));
+                setProgress(Math.min((((inputNumberCount + 1) * 100) / totalInputListNumbers), 100));
             }
             return null;
         }
@@ -110,8 +149,11 @@ public class scrubberGUI extends javax.swing.JFrame implements PropertyChangeLis
             done = true;
             if(!hasCompletedInputImport)
                 statusLabel.setText("Importing of Input Numbers crashed at " + inputNumberCount + "-th line.");
-            else if(!hasCompletedDNDImport)
-                statusLabel.setText("Importing of DND Numbers crashed at " + dndNumberCount + "-th line.");
+            else if(!hasCompletedScrubListImport)
+                statusLabel.setText("Importing of Scrub List crashed at " + scrubListNumberCount + "-th line.");
+            else if(scrubRangeEnableCheckBox.isSelected() && !hasCompletedScrubRangeImport) {
+                statusLabel.setText("Importing of Scrub Range crashed at " + scrubRangeNumberCount + "-th line.");
+            }
             else {
                 outputButton.setEnabled(true);
                 statusLabel.setText("Number of MSISDN-s in output: " + outputNumberCount);
@@ -124,7 +166,7 @@ public class scrubberGUI extends javax.swing.JFrame implements PropertyChangeLis
      * Invoked when task's progress property changes.
      */
     public void propertyChange(PropertyChangeEvent evt) {
-        if ("progress" == evt.getPropertyName()) {
+        if (0 == "progress".compareTo(evt.getPropertyName())) {
             int progress = (Integer) evt.getNewValue();
             scrubProgressBar.setValue(progress);
         }
@@ -139,46 +181,50 @@ public class scrubberGUI extends javax.swing.JFrame implements PropertyChangeLis
     // <editor-fold defaultstate="collapsed" desc="Generated Code">//GEN-BEGIN:initComponents
     private void initComponents() {
 
-        inputLabel = new javax.swing.JLabel();
-        inputButton = new javax.swing.JButton();
-        dndLabel = new javax.swing.JLabel();
-        dndButton = new javax.swing.JButton();
+        inputListLabel = new javax.swing.JLabel();
+        inputListButton = new javax.swing.JButton();
+        scrubListLabel = new javax.swing.JLabel();
+        scrubListButton = new javax.swing.JButton();
         outputLabel = new javax.swing.JLabel();
         outputButton = new javax.swing.JButton();
         scrubButton = new javax.swing.JButton();
         scrubLabel = new javax.swing.JLabel();
         scrubProgressBar = new javax.swing.JProgressBar();
-        inputCheckBox = new javax.swing.JCheckBox();
-        dndCheckBox = new javax.swing.JCheckBox();
+        inputListDoneCheckBox = new javax.swing.JCheckBox();
+        scrubListDoneCheckBox = new javax.swing.JCheckBox();
         statusSeperator = new javax.swing.JSeparator();
         statusLabel = new javax.swing.JLabel();
+        scrubRangeLabel = new javax.swing.JLabel();
+        scrubRangeButton = new javax.swing.JButton();
+        scrubRangeDoneCheckBox = new javax.swing.JCheckBox();
+        scrubRangeEnableCheckBox = new javax.swing.JCheckBox();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
-        setTitle("Scrubber v2");
+        setTitle("Scrubber v3");
         setAlwaysOnTop(true);
 
-        inputLabel.setText("Step 1. Choose an Input File:");
+        inputListLabel.setText("1. Choose an Input List of Numbers:");
 
-        inputButton.setText("Select Input File");
-        inputButton.addActionListener(new java.awt.event.ActionListener() {
+        inputListButton.setText("Select Input List");
+        inputListButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                inputButtonActionPerformed(evt);
+                inputListButtonActionPerformed(evt);
             }
         });
 
-        dndLabel.setText("Step 2. Select a DND File:");
+        scrubListLabel.setText("2. Select a list of numbers for scrubing:");
 
-        dndButton.setText("Select DND File");
-        dndButton.setEnabled(false);
-        dndButton.addActionListener(new java.awt.event.ActionListener() {
+        scrubListButton.setText("Select Scrub List");
+        scrubListButton.setEnabled(false);
+        scrubListButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                dndButtonActionPerformed(evt);
+                scrubListButtonActionPerformed(evt);
             }
         });
 
-        outputLabel.setText("Step 4. Save the Output File:");
+        outputLabel.setText("4. Save the Output File:");
 
-        outputButton.setText("Save Output");
+        outputButton.setText("Save Output File");
         outputButton.setEnabled(false);
         outputButton.addActionListener(new java.awt.event.ActionListener() {
             public void actionPerformed(java.awt.event.ActionEvent evt) {
@@ -194,13 +240,32 @@ public class scrubberGUI extends javax.swing.JFrame implements PropertyChangeLis
             }
         });
 
-        scrubLabel.setText("Step 3. Intiate Scrubbing:");
+        scrubLabel.setText("3. Intiate Scrubbing:");
 
-        inputCheckBox.setEnabled(false);
+        inputListDoneCheckBox.setEnabled(false);
 
-        dndCheckBox.setEnabled(false);
+        scrubListDoneCheckBox.setEnabled(false);
 
         statusLabel.setText("Waiting for user to select files...");
+
+        scrubRangeLabel.setText("Optional. Choose a Black-list Range File:");
+
+        scrubRangeButton.setText("Select Black-list Range File");
+        scrubRangeButton.setEnabled(false);
+        scrubRangeButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                scrubRangeButtonActionPerformed(evt);
+            }
+        });
+
+        scrubRangeDoneCheckBox.setEnabled(false);
+
+        scrubRangeEnableCheckBox.setEnabled(false);
+        scrubRangeEnableCheckBox.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                scrubRangeEnableCheckBoxActionPerformed(evt);
+            }
+        });
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -209,106 +274,127 @@ public class scrubberGUI extends javax.swing.JFrame implements PropertyChangeLis
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addComponent(statusLabel)
-                    .addComponent(statusSeperator, javax.swing.GroupLayout.DEFAULT_SIZE, 442, Short.MAX_VALUE)
-                    .addComponent(scrubProgressBar, javax.swing.GroupLayout.DEFAULT_SIZE, 442, Short.MAX_VALUE)
+                    .addComponent(statusSeperator, javax.swing.GroupLayout.DEFAULT_SIZE, 507, Short.MAX_VALUE)
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(outputLabel)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(outputButton, javax.swing.GroupLayout.DEFAULT_SIZE, 246, Short.MAX_VALUE))
+                        .addComponent(outputButton, javax.swing.GroupLayout.DEFAULT_SIZE, 345, Short.MAX_VALUE))
+                    .addComponent(scrubProgressBar, javax.swing.GroupLayout.DEFAULT_SIZE, 507, Short.MAX_VALUE)
+                    .addComponent(statusLabel)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(inputLabel)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(scrubRangeEnableCheckBox)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(scrubRangeLabel))
+                            .addComponent(scrubListLabel)
+                            .addComponent(inputListLabel)
+                            .addComponent(scrubLabel))
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(inputButton, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(inputCheckBox))
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(dndLabel)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(dndButton, javax.swing.GroupLayout.DEFAULT_SIZE, 220, Short.MAX_VALUE)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(dndCheckBox))
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(scrubLabel)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(scrubButton, javax.swing.GroupLayout.DEFAULT_SIZE, 246, Short.MAX_VALUE)))
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(scrubButton, javax.swing.GroupLayout.DEFAULT_SIZE, 182, Short.MAX_VALUE)
+                                .addGap(26, 26, 26))
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(inputListButton, javax.swing.GroupLayout.DEFAULT_SIZE, 182, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(inputListDoneCheckBox))
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(scrubListButton, javax.swing.GroupLayout.DEFAULT_SIZE, 182, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(scrubListDoneCheckBox))
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(scrubRangeButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(scrubRangeDoneCheckBox)))))
                 .addContainerGap())
         );
-
-        layout.linkSize(javax.swing.SwingConstants.HORIZONTAL, new java.awt.Component[] {dndLabel, inputLabel, outputLabel, scrubLabel});
-
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(inputButton)
-                        .addComponent(inputLabel))
-                    .addComponent(inputCheckBox))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                        .addComponent(dndLabel)
-                        .addComponent(dndButton))
-                    .addComponent(dndCheckBox))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addGroup(layout.createSequentialGroup()
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addGroup(layout.createSequentialGroup()
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                        .addComponent(inputListLabel)
+                                        .addComponent(inputListButton, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                                    .addComponent(inputListDoneCheckBox))
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addGroup(layout.createSequentialGroup()
+                                        .addGap(12, 12, 12)
+                                        .addComponent(scrubListLabel))
+                                    .addGroup(layout.createSequentialGroup()
+                                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                        .addComponent(scrubListButton))))
+                            .addComponent(scrubListDoneCheckBox))
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                            .addComponent(scrubRangeEnableCheckBox)
+                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                                .addComponent(scrubRangeLabel)
+                                .addComponent(scrubRangeButton))))
+                    .addComponent(scrubRangeDoneCheckBox))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(scrubLabel)
                     .addComponent(scrubButton))
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(scrubProgressBar, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(12, 12, 12)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(outputLabel)
                     .addComponent(outputButton))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(statusSeperator, javax.swing.GroupLayout.PREFERRED_SIZE, 10, javax.swing.GroupLayout.PREFERRED_SIZE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                .addComponent(statusSeperator, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(statusLabel)
-                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+                .addContainerGap())
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
-    private void inputButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_inputButtonActionPerformed
+    private void inputListButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_inputListButtonActionPerformed
         // Handle open button action.
         int returnVal = inputFileChooser.showOpenDialog(scrubberGUI.this);
 
         if (returnVal == JFileChooser.APPROVE_OPTION) {
-            inputCheckBox.setSelected(true);
-            dndButton.setEnabled(true);
+            inputListDoneCheckBox.setSelected(true);
+            scrubListButton.setEnabled(true);
             inputFile = inputFileChooser.getSelectedFile();
             try {
-                totalInputNumbers = countLines(inputFile);
+                totalInputListNumbers = countLines(inputFile);
             } catch (IOException ex) {
                 Logger.getLogger(scrubberGUI.class.getName()).log(Level.SEVERE, null, ex);
             }
-            statusLabel.setText("Input file contains " + (totalInputNumbers - 10) + " numbers. Waiting for DND file selection...");
+            statusLabel.setText("Input file contains " + totalInputListNumbers + " numbers. Waiting for DND file selection...");
         } else {
             statusLabel.setText("Input file selection cancelled... Waiting for input...");
         }
-    }//GEN-LAST:event_inputButtonActionPerformed
+    }//GEN-LAST:event_inputListButtonActionPerformed
 
-    private void dndButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_dndButtonActionPerformed
+    private void scrubListButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_scrubListButtonActionPerformed
         // Handle open button action.
-        int returnVal = dndFileChooser.showOpenDialog(scrubberGUI.this);
+        int returnVal = scrubFileChooser.showOpenDialog(scrubberGUI.this);
 
         if (returnVal == JFileChooser.APPROVE_OPTION) {
-            dndCheckBox.setSelected(true);
+            scrubListDoneCheckBox.setSelected(true);
             scrubButton.setEnabled(true);
-            dndFile = dndFileChooser.getSelectedFile();
+            scrubRangeEnableCheckBox.setEnabled(true);
+            scrubFile = scrubFileChooser.getSelectedFile();
             try {
-                totalDndNumbers = countLines(dndFile);
+                totalScrubListNumbers = countLines(scrubFile);
             } catch (IOException ex) {
                 Logger.getLogger(scrubberGUI.class.getName()).log(Level.SEVERE, null, ex);
             }
-            statusLabel.setText("DND file contains " + (totalDndNumbers - 10) + " numbers. Press 'Scrub!' to begin.");
+            statusLabel.setText("DND file contains " + (totalScrubListNumbers) + " numbers. Press 'Scrub!' to begin.");
         } else {
             statusLabel.setText("DND file selection cancelled... Waiting for input...");
         }
-    }//GEN-LAST:event_dndButtonActionPerformed
+    }//GEN-LAST:event_scrubListButtonActionPerformed
 
     private void scrubButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_scrubButtonActionPerformed
 
@@ -318,8 +404,10 @@ public class scrubberGUI extends javax.swing.JFrame implements PropertyChangeLis
 
         // Reset the scrub button
         scrubButton.setEnabled(false);
-        inputButton.setEnabled(false);
-        dndButton.setEnabled(false);
+        inputListButton.setEnabled(false);
+        scrubListButton.setEnabled(false);
+        scrubRangeButton.setEnabled(false);
+        scrubRangeEnableCheckBox.setEnabled(false);
         setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
 
         //Instances of javax.swing.SwingWorker are not reusuable, so
@@ -356,6 +444,40 @@ public class scrubberGUI extends javax.swing.JFrame implements PropertyChangeLis
         }
     }//GEN-LAST:event_outputButtonActionPerformed
 
+    private void scrubRangeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_scrubRangeButtonActionPerformed
+        // Handle open button action.
+        int returnVal = scrubRangeFileChooser.showOpenDialog(scrubberGUI.this);
+
+        if (returnVal == JFileChooser.APPROVE_OPTION) {
+            scrubRangeDoneCheckBox.setSelected(true);
+            scrubButton.setEnabled(true);
+            scrubRangeEnableCheckBox.setEnabled(true);
+            hasCompletedscrubRangeFileSelection = true;
+            scrubRangeFile = scrubRangeFileChooser.getSelectedFile();
+            try {
+                totalScrubRangeNumbers = countLines(scrubRangeFile);
+            } catch (IOException ex) {
+                Logger.getLogger(scrubberGUI.class.getName()).log(Level.SEVERE, null, ex);
+            }
+            statusLabel.setText("Scrub-Ranges file contains " + totalScrubRangeNumbers + " numbers. Press 'Scrub!' to begin.");
+        } else {
+            statusLabel.setText("Scrub-Ranges file selection cancelled... Waiting for input...");
+        }
+    }//GEN-LAST:event_scrubRangeButtonActionPerformed
+
+    private void scrubRangeEnableCheckBoxActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_scrubRangeEnableCheckBoxActionPerformed
+        if(scrubRangeEnableCheckBox.isSelected()) {
+          scrubRangeButton.setEnabled(true);
+          if(!hasCompletedscrubRangeFileSelection)
+              scrubButton.setEnabled(false);
+        }
+        else {
+          scrubRangeButton.setEnabled(false);
+          if(!hasCompletedscrubRangeFileSelection)
+              scrubButton.setEnabled(true);
+        }
+    }//GEN-LAST:event_scrubRangeEnableCheckBoxActionPerformed
+
     public static int countLines(File someFile) throws IOException {
         int numberOfLines = 0;
         BufferedReader inputStream = null;
@@ -370,7 +492,7 @@ public class scrubberGUI extends javax.swing.JFrame implements PropertyChangeLis
                 inputStream.close();
             }
         }
-        return (numberOfLines + 10);
+        return numberOfLines;
     }
 
     /**
@@ -385,36 +507,53 @@ public class scrubberGUI extends javax.swing.JFrame implements PropertyChangeLis
         });
     }
     // Variables declaration - do not modify//GEN-BEGIN:variables
-    private javax.swing.JButton dndButton;
-    private javax.swing.JCheckBox dndCheckBox;
-    private javax.swing.JLabel dndLabel;
-    private javax.swing.JButton inputButton;
-    private javax.swing.JCheckBox inputCheckBox;
-    private javax.swing.JLabel inputLabel;
+    private javax.swing.JButton inputListButton;
+    private javax.swing.JCheckBox inputListDoneCheckBox;
+    private javax.swing.JLabel inputListLabel;
     private javax.swing.JButton outputButton;
     private javax.swing.JLabel outputLabel;
     private javax.swing.JButton scrubButton;
     private javax.swing.JLabel scrubLabel;
+    private javax.swing.JButton scrubListButton;
+    private javax.swing.JCheckBox scrubListDoneCheckBox;
+    private javax.swing.JLabel scrubListLabel;
     private javax.swing.JProgressBar scrubProgressBar;
+    private javax.swing.JButton scrubRangeButton;
+    private javax.swing.JCheckBox scrubRangeDoneCheckBox;
+    private javax.swing.JCheckBox scrubRangeEnableCheckBox;
+    private javax.swing.JLabel scrubRangeLabel;
     private javax.swing.JLabel statusLabel;
     private javax.swing.JSeparator statusSeperator;
     // End of variables declaration//GEN-END:variables
     final JFileChooser inputFileChooser = new JFileChooser();
-    final JFileChooser dndFileChooser = new JFileChooser();
+    final JFileChooser scrubFileChooser = new JFileChooser();
     final JFileChooser outputFileChooser = new JFileChooser();
-    int totalInputNumbers = 100000;
-    int totalDndNumbers = 100000;
+    final JFileChooser scrubRangeFileChooser = new JFileChooser();
+
+    int totalInputListNumbers = 0;
+    int totalScrubListNumbers = 0;
+    int totalScrubRangeNumbers = 0;
     int outputNumberCount = 0;
+
     File inputFile = null;
-    File dndFile = null;
+    File scrubFile = null;
+    File scrubRangeFile = null;
+
     long[] inputNumbers;
-    long[] dndNumbers;
+    long[] scrubNumbers;
+    long[][] scrubRangeNumbers;
     long[] outputNumbers;
+
     private Task task;
+
     boolean done = false;
     boolean hasCompletedInputImport = false;
-    boolean hasCompletedDNDImport = false;
+    boolean hasCompletedScrubListImport = false;
+    boolean hasCompletedScrubRangeImport = false;
+    boolean hasCompletedscrubRangeFileSelection = false;
+
     int inputNumberCount = 0;
-    int dndNumberCount = 0;
+    int scrubListNumberCount = 0;
+    int scrubRangeNumberCount = 0;
 
 }
