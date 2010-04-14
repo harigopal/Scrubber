@@ -7,7 +7,7 @@ another list of numbers and (optionally) against a range of numbers
 defined by their starting digits.
 
 Within the program, the basic list of numbers is called the 'Number
-List' and the list against which exclusion operation is perform is
+List' and the list against which exclusion operation is performed is
 called the 'Scrub List'. The range of numbers is referred to as the
 'Scrub-Range List'.
 
